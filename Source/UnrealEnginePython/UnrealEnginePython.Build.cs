@@ -16,6 +16,9 @@ public class UnrealEnginePython : ModuleRules
     // on Linux an include;libs syntax is expected:
     //private string pythonHome = "/usr/local/include/python3.6;/usr/local/lib/libpython3.6.so"
 
+    // this is an example for MacPorts on Mac
+    //private string pythonHome = "/opt/local/Library/Frameworks/Python.framework/Versions/3.6/";
+
 
     private string[] windowsKnownPaths =
     {
