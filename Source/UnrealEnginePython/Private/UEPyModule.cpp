@@ -4378,19 +4378,21 @@ PyObject* ue_unbind_pyevent(ue_PyUObject* u_obj, FString event_name, PyObject* p
 		if (py_delegate != nullptr)
 		{
 #if ENGINE_MINOR_VERSION < 23
-			FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(u_obj->ue_object);
+			FMulticastScriptDelegate* multiscript_delegate = casted_prop->GetPropertyValuePtr_InContainer(u_obj->ue_object);
 #else
-			FMulticastScriptDelegate multiscript_delegate = *casted_prop->GetMulticastDelegate(u_obj->ue_object);
+			FMulticastScriptDelegate* multiscript_delegate = nullptr;
+			if (auto TProperty = CastField<TProperty_MulticastDelegate<FMulticastScriptDelegate>>(casted_prop))
+				multiscript_delegate = TProperty->GetPropertyValuePtr_InContainer(u_obj->ue_object);
 #endif
-
-			multiscript_delegate.Remove(py_delegate, FName("PyFakeCallable"));
-
-			// re-assign multicast delegate
+			if (multiscript_delegate) {
+				multiscript_delegate->Remove(py_delegate, FName("PyFakeCallable"));
+				// re-assign multicast delegate
 #if ENGINE_MINOR_VERSION < 23
-			casted_prop->SetPropertyValue_InContainer(u_obj->ue_object, multiscript_delegate);
+				casted_prop->SetPropertyValue_InContainer(u_obj->ue_object, multiscript_delegate);
 #else
-			casted_prop->SetMulticastDelegate(u_obj->ue_object, multiscript_delegate);
+				// casted_prop->SetMulticastDelegate(u_obj->ue_object, multiscript_delegate);
 #endif
+			}
 		}
 	}
 #if ENGINE_MINOR_VERSION >= 25
@@ -4444,30 +4446,33 @@ PyObject* ue_bind_pyevent(ue_PyUObject* u_obj, FString event_name, PyObject* py_
 #endif
 	{
 #if ENGINE_MINOR_VERSION < 23
-		FMulticastScriptDelegate multiscript_delegate = casted_prop->GetPropertyValue_InContainer(u_obj->ue_object);
+		FMulticastScriptDelegate* multiscript_delegate = casted_prop->GetPropertyValuePtr_InContainer(u_obj->ue_object);
 #else
-		FMulticastScriptDelegate multiscript_delegate = *casted_prop->GetMulticastDelegate(u_obj->ue_object);
+		FMulticastScriptDelegate* multiscript_delegate = nullptr;
+		if (auto TProperty = CastField<TProperty_MulticastDelegate<FMulticastScriptDelegate>>(casted_prop))
+			multiscript_delegate = TProperty->GetPropertyValuePtr_InContainer(u_obj->ue_object);
 #endif
-
-		FScriptDelegate script_delegate;
+		if (multiscript_delegate) {
+			FScriptDelegate script_delegate;
 #if ENGINE_MINOR_VERSION >= 25
-		// can we reuse UPythonDelegate here??
-		UPythonDelegate* py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewDelegate(u_obj->ue_object, py_callable, casted_prop->SignatureFunction);
+			// can we reuse UPythonDelegate here??
+			UPythonDelegate* py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewDelegate(u_obj->ue_object, py_callable, casted_prop->SignatureFunction);
 #else
-		UPythonDelegate* py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewDelegate(u_obj->ue_object, py_callable, casted_prop->SignatureFunction);
+			UPythonDelegate* py_delegate = FUnrealEnginePythonHouseKeeper::Get()->NewDelegate(u_obj->ue_object, py_callable, casted_prop->SignatureFunction);
 #endif
-		// fake UFUNCTION for bypassing checks
-		script_delegate.BindUFunction(py_delegate, FName("PyFakeCallable"));
+			// fake UFUNCTION for bypassing checks
+			script_delegate.BindUFunction(py_delegate, FName("PyFakeCallable"));
 
-		// add the new delegate
-		multiscript_delegate.Add(script_delegate);
+			// add the new delegate
+			multiscript_delegate->Add(script_delegate);
 
-		// re-assign multicast delegate
+			// re-assign multicast delegate
 #if ENGINE_MINOR_VERSION < 23
-		casted_prop->SetPropertyValue_InContainer(u_obj->ue_object, multiscript_delegate);
+			casted_prop->SetPropertyValue_InContainer(u_obj->ue_object, multiscript_delegate);
 #else
-		casted_prop->SetMulticastDelegate(u_obj->ue_object, multiscript_delegate);
+			// casted_prop->SetMulticastDelegate(u_obj->ue_object, multiscript_delegate);
 #endif
+		}
 	}
 #if ENGINE_MINOR_VERSION >= 25
 	else if (auto casted_prop_delegate = CastField<FDelegateProperty>(f_property))
